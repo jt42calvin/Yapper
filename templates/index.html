@@ -19,12 +19,12 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            padding: 40px;
+            padding: 30px;
             backdrop-filter: blur(10px);
         }
 
@@ -36,14 +36,13 @@
             font-weight: 300;
         }
 
-        .input-section {
-            margin-bottom: 30px;
-        }
-
-        .url-input-container {
+        /* URL Input Section */
+        .url-section {
+            max-width: 800px;
+            margin: 0 auto 30px;
             display: flex;
             gap: 15px;
-            margin-bottom: 20px;
+            align-items: center;
         }
 
         #urlInput {
@@ -88,7 +87,102 @@
             color: #666;
             font-size: 14px;
             text-align: center;
+            margin: 0 auto 20px;
+            max-width: 800px;
+        }
+
+        /* Two Column Layout */
+        .content-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            display: none;  /* Hidden by default, shown after processing */
+        }
+
+        /* Video Column */
+        .video-column {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .video-player {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 8px;
             margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .video-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: block;
+        }
+
+        .video-info h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .video-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        /* Transcript Column */
+        .transcript-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .transcript-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .copy-btn {
+            padding: 8px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .transcript-content {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            height: 500px;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .transcript-entry {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-left: 4px solid #667eea;
+            background: #f8f9fa;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .timestamp {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .transcript-text {
+            color: #333;
+            line-height: 1.5;
         }
 
         .loading {
@@ -125,84 +219,6 @@
             display: none;
         }
 
-        .video-info {
-            background: #f0f8ff;
-            border: 1px solid #b3d9ff;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-            display: none;
-        }
-
-        .video-info h3 {
-            color: #1565c0;
-            margin-bottom: 10px;
-        }
-
-        .video-info p {
-            margin: 5px 0;
-            color: #333;
-        }
-
-        .transcript-section {
-            margin-top: 30px;
-            display: none;
-        }
-
-        .transcript-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .transcript-header h2 {
-            color: #333;
-        }
-
-        .copy-btn {
-            padding: 8px 16px;
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .copy-btn:hover {
-            background: #218838;
-        }
-
-        .transcript-content {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            max-height: 500px;
-            overflow-y: auto;
-            border: 1px solid #dee2e6;
-        }
-
-        .transcript-entry {
-            margin-bottom: 15px;
-            padding: 10px;
-            background: white;
-            border-radius: 5px;
-            border-left: 4px solid #667eea;
-        }
-
-        .timestamp {
-            font-weight: 600;
-            color: #667eea;
-            font-size: 14px;
-            margin-bottom: 5px;
-        }
-
-        .transcript-text {
-            color: #333;
-            line-height: 1.6;
-        }
-
         .no-transcript {
             text-align: center;
             color: #666;
@@ -213,17 +229,15 @@
 </head>
 <body>
     <div class="container">
-        <h1>YouTube Video Transcriber</h1>
+        <h1>Yapper - Comedy Clip Finder</h1>
         
-        <div class="input-section">
-            <div class="url-input-container">
-                <input type="text" id="urlInput" placeholder="Enter YouTube video URL..." 
-                       value="">
-                <button id="transcribeBtn">Transcribe</button>
-            </div>
-            <div class="info-text">
-                Enter a YouTube video URL to generate a transcript with timestamps (max 10 minutes)
-            </div>
+        <!-- URL Input Section -->
+        <div class="url-section">
+            <input type="text" id="urlInput" placeholder="Paste YouTube URL here...">
+            <button id="transcribeBtn">Transcribe</button>
+        </div>
+        <div class="info-text">
+            Enter a YouTube video URL to find the funniest moment (max 10 minutes)
         </div>
 
         <div class="loading" id="loading">
@@ -232,22 +246,35 @@
 
         <div class="error" id="error"></div>
 
-        <div class="video-info" id="videoInfo">
-            <h3>Video Information</h3>
-            <p><strong>Title:</strong> <span id="videoTitle"></span></p>
-            <p><strong>Uploader:</strong> <span id="videoUploader"></span></p>
-            <p><strong>Duration:</strong> <span id="videoDuration"></span></p>
-        </div>
+        <!-- Two Column Layout -->
+        <div class="content-columns" id="contentColumns">
+            <!-- Video Column -->
+            <div class="video-column">
+                <!-- Video Player -->
+                <div class="video-player" id="videoPlayer"></div>
 
-        <div class="transcript-section" id="transcriptSection">
-            <div class="transcript-header">
-                <h2>Transcript</h2>
-                <button class="copy-btn" id="copyBtn">Copy Transcript</button>
+                <!-- Video Information -->
+                <div class="video-info" id="videoInfo">
+                    <h3>Video Information</h3>
+                    <p><strong>Title:</strong> <span id="videoTitle"></span></p>
+                    <p><strong>Channel:</strong> <span id="videoUploader"></span></p>
+                    <p><strong>Duration:</strong> <span id="videoDuration"></span></p>
+                    <p><strong>Funniest Moment:</strong> <span id="funnyMoment"></span></p>
+                </div>
             </div>
-            <div class="transcript-content" id="transcriptContent">
-                <div class="no-transcript">No transcript available</div>
+
+            <!-- Transcript Column -->
+            <div class="transcript-section" id="transcriptSection">
+                <div class="transcript-header">
+                    <h2>Transcript</h2>
+                    <button class="copy-btn" id="copyBtn">Copy Transcript</button>
+                </div>
+                <div class="transcript-content" id="transcriptContent">
+                    <div class="no-transcript">No transcript available</div>
+                </div>
             </div>
         </div>
+    </div>
     </div>
 
     <script>
@@ -337,7 +364,23 @@
                 document.getElementById('videoTitle').textContent = info.title;
                 document.getElementById('videoUploader').textContent = info.uploader;
                 document.getElementById('videoDuration').textContent = formatDuration(info.duration);
-                videoInfo.style.display = 'block';
+                if (info.funny_moment) {
+                    document.getElementById('funnyMoment').textContent = 
+                        `${formatTime(info.funny_moment.start_time)} - ${formatTime(info.funny_moment.end_time)}`;
+                }
+                document.getElementById('contentColumns').style.display = 'grid';
+                
+                // If there's a highlight video, show it in the video player
+                if (info.highlight_path) {
+                    const videoPlayer = document.getElementById('videoPlayer');
+                    console.log(`${info.highlight_path}`);
+                    videoPlayer.innerHTML = `
+                        <video width="100%" height="100%" controls>
+                            <source src="/highlights/test.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    `;
+                }
             }
 
             function showTranscript(transcript) {

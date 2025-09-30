@@ -27,7 +27,7 @@ TODO:
 - Adjust frontend to show trimmed highlight video after it's been generated
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import yt_dlp
 import os
 import re
@@ -302,6 +302,10 @@ def create_highlight_video(video_path, start_time, end_time):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/highlights/<path:filename>')
+def serve_highlight(filename):
+    return send_from_directory('highlights', filename)
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
