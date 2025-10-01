@@ -36,7 +36,6 @@
             font-weight: 300;
         }
 
-        /* URL Input Section */
         .url-section {
             max-width: 800px;
             margin: 0 auto 30px;
@@ -91,15 +90,13 @@
             max-width: 800px;
         }
 
-        /* Two Column Layout */
         .content-columns {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 30px;
-            display: none;  /* Hidden by default, shown after processing */
+            display: none;
         }
 
-        /* Video Column */
         .video-column {
             background: #f8f9fa;
             border-radius: 12px;
@@ -113,6 +110,12 @@
             border-radius: 8px;
             margin-bottom: 20px;
             overflow: hidden;
+        }
+
+        .video-player video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
         .video-info {
@@ -133,7 +136,6 @@
             color: #666;
         }
 
-        /* Transcript Column */
         .transcript-section {
             background: #f8f9fa;
             border-radius: 12px;
@@ -231,13 +233,12 @@
     <div class="container">
         <h1>Yapper - Comedy Clip Finder</h1>
         
-        <!-- URL Input Section -->
         <div class="url-section">
             <input type="text" id="urlInput" placeholder="Paste YouTube URL here...">
-            <button id="transcribeBtn">Transcribe</button>
+            <button id="transcribeBtn">Generate Funny Clip!</button>
         </div>
         <div class="info-text">
-            Enter a YouTube video URL to find the funniest moment (max 10 minutes)
+            Enter a YouTube video URL to find the funniest moment
         </div>
 
         <div class="loading" id="loading">
@@ -246,14 +247,10 @@
 
         <div class="error" id="error"></div>
 
-        <!-- Two Column Layout -->
         <div class="content-columns" id="contentColumns">
-            <!-- Video Column -->
             <div class="video-column">
-                <!-- Video Player -->
                 <div class="video-player" id="videoPlayer"></div>
 
-                <!-- Video Information -->
                 <div class="video-info" id="videoInfo">
                     <h3>Video Information</h3>
                     <p><strong>Title:</strong> <span id="videoTitle"></span></p>
@@ -263,7 +260,6 @@
                 </div>
             </div>
 
-            <!-- Transcript Column -->
             <div class="transcript-section" id="transcriptSection">
                 <div class="transcript-header">
                     <h2>Transcript</h2>
@@ -274,7 +270,6 @@
                 </div>
             </div>
         </div>
-    </div>
     </div>
 
     <script>
@@ -315,7 +310,6 @@
             });
 
             function startTranscription(url) {
-                // Reset UI
                 hideAll();
                 loading.style.display = 'block';
                 transcribeBtn.disabled = true;
@@ -370,13 +364,12 @@
                 }
                 document.getElementById('contentColumns').style.display = 'grid';
                 
-                // If there's a highlight video, show it in the video player
-                if (info.highlight_path) {
+                if (info.highlight_filename) {
                     const videoPlayer = document.getElementById('videoPlayer');
-                    console.log(`${info.highlight_path}`);
+                    console.log('Loading highlight video:', info.highlight_filename);
                     videoPlayer.innerHTML = `
-                        <video width="100%" height="100%" controls>
-                            <source src="/highlights/test.mp4" type="video/mp4">
+                        <video controls>
+                            <source src="/highlights/${info.highlight_filename}" type="video/mp4">
                             Your browser does not support the video tag.
                         </video>
                     `;

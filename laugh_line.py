@@ -88,6 +88,20 @@ def download_video(url):
             "format": "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]",
             "outtmpl": output_video,
             "quiet": True,
+            "cookiefile": None,
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "web"],
+                    "skip": ["hls", "dash"]
+                }
+            }, # Fix 403 errors by mimicking a real browser
+            "http_headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-us,en;q=0.5",
+                "Sec-Fetch-Mode": "navigate"
+            } # Fix 403 errors by mimicking a real browser
         } # Download best quality .mp4 capped at 1080p
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             print("Downloading video...")
@@ -101,6 +115,7 @@ def download_video(url):
     return {
         "video_path": output_video,
         "audio_path": output_audio,
+        "video_id": video_id,
         "title": info.get("title", "Unknown"),
         "duration": info.get("duration", 0),
         "uploader": info.get("uploader", "Unknown"),
@@ -190,8 +205,10 @@ def analyze_transcript_with_ollama(transcript_text):
     - end_time: End time in seconds (integer)
     - quote: Exact quote from transcript
 
+    Funny moment should be greater than 25 seconds long and include context before the joke.
+
     Example format:
-    [{{"description": "A hilarious joke about cats", "start_time": 120, "end_time": 130, "quote": "Why did the cat sit on the computer? To keep an eye on the mouse!"}}]
+    [{{"description": "A hilarious joke about cats", "start_time": 100, "end_time": 130, "quote": "Why did the cat sit on the computer? To keep an eye on the mouse!"}}]
 
     Transcript:
     {transcript_text}
@@ -276,12 +293,10 @@ def create_transcript_txt(transcript):
     print(f"Transcript saved to {txt_path}")
     return txt_path
 
-def create_highlight_video(video_path, start_time, end_time):
+def create_highlight_video(video_path, start_time, end_time, video_id):
     """Create a new trimmed .mp4 file with just the funniest joke using ffmpeg"""
     if not os.path.exists("highlights"):
         os.makedirs("highlights")
-
-    video_id = os.path.basename(video_path).split('_')[0]
 
     highlight_path = os.path.join("highlights", f"{video_id}_highlight.mp4")
 
@@ -290,7 +305,7 @@ def create_highlight_video(video_path, start_time, end_time):
         "-y",  # overwrite video if exists with same video ID
         "-i", video_path,
         "-ss", str(start_time),
-        "-to", str(end_time),
+        "-to", str(end_time + 1),
         "-c", "copy",
         highlight_path,
     ]
@@ -305,7 +320,13 @@ def index():
 
 @app.route('/highlights/<path:filename>')
 def serve_highlight(filename):
+    """Serve highlight videos from the highlights directory"""
     return send_from_directory('highlights', filename)
+
+@app.route('/downloads/<path:filename>')
+def serve_download(filename):
+    """Serve files from the downloads directory"""
+    return send_from_directory('downloads', filename)
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
@@ -323,7 +344,8 @@ def transcribe():
                 'title': video_result['title'],
                 'duration': video_result['duration'],
                 'uploader': video_result['uploader'],
-                'path': video_result['video_path']  # Added this for highlight creation
+                'path': video_result['video_path'],
+                'video_id': video_result['video_id']
             }
         except Exception as e:
             return jsonify({'error': str(e)}), 400 # Download error
@@ -364,10 +386,11 @@ def transcribe():
             highlight_path = create_highlight_video(
                 video_info['path'], 
                 funny_moment['start_time'], 
-                funny_moment['end_time']
+                funny_moment['end_time'],
+                video_info['video_id']
             )
-            print("Highlight video created at:", highlight_path)
-            video_info['highlight_path'] = highlight_path
+            print("Highlight video created at:", highlight_path) # Return just the filename (video-id_highlight.mp4) for frontend to use
+            video_info['highlight_filename'] = f"{video_info['video_id']}_highlight.mp4"
             video_info['funny_moment'] = funny_moment
             
         except Exception as e:
