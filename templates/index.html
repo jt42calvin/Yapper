@@ -125,6 +125,13 @@
             margin-bottom: 20px;
         }
 
+        .context-controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
         .feedback-btn {
             padding: 12px 20px;
             border: none;
@@ -139,12 +146,27 @@
             gap: 5px;
         }
 
-        .feedback-btn:hover {
+        .context-btn {
+            padding: 10px 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .feedback-btn:hover, .context-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
-        .feedback-btn:disabled {
+        .feedback-btn:disabled, .context-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
@@ -163,6 +185,16 @@
         .btn-red {
             background: #e06370;
             color: white;
+        }
+
+        .btn-light-green {
+            background: #90ee90;
+            color: #333;
+        }
+
+        .btn-light-red {
+            background: #ffb3ba;
+            color: #333;
         }
 
         .video-info {
@@ -309,19 +341,34 @@
             <div class="video-column">
                 <div class="video-player" id="videoPlayer"></div>
 
-                <div class="feedback-buttons" id="feedbackButtons" style="display: none;">
-                    <button class="feedback-btn btn-green" id="moreContextBeginBtn">
-                        ⏪ More from earlier
-                    </button>
-                    <button class="feedback-btn btn-green" id="moreContextNextBtn">
-                        ⏩ More from later
-                    </button>
-                    <button class="feedback-btn btn-yellow" id="notFunnyBtn">
-                        😐 Find a different joke
-                    </button>
-                    <button class="feedback-btn btn-red" id="notAppropriateBtn">
-                        🔨 Not appropriate
-                    </button>
+                <div id="feedbackButtons" style="display: none;">
+                    <div class="context-controls">
+                        <button class="context-btn btn-light-green" id="addBeforeBtn">
+                            <span>➕ ⬅️</span>
+                            <span style="font-size: 10px;">Add Earlier</span>
+                        </button>
+                        <button class="context-btn btn-light-red" id="removeBeforeBtn">
+                            <span>➖ ⬅️</span>
+                            <span style="font-size: 10px;">Cut Earlier</span>
+                        </button>
+                        <button class="context-btn btn-light-red" id="removeAfterBtn">
+                            <span>➖ ➡️</span>
+                            <span style="font-size: 10px;">Cut Later</span>
+                        </button>
+                        <button class="context-btn btn-light-green" id="addAfterBtn">
+                            <span>➕ ➡️</span>
+                            <span style="font-size: 10px;">Add Later</span>
+                        </button>
+                    </div>
+
+                    <div class="feedback-buttons">
+                        <button class="feedback-btn btn-yellow" id="notFunnyBtn">
+                            😐 Find a different joke
+                        </button>
+                        <button class="feedback-btn btn-red" id="notAppropriateBtn">
+                            🚫 Not appropriate
+                        </button>
+                    </div>
                 </div>
 
                 <div class="success-message" id="successMessage"></div>
@@ -362,9 +409,12 @@
 
             let currentVideoId = null;
             let currentTranscript = null;
+            let currentVideoElement = null;
 
-            const moreContextBeginBtn = document.getElementById('moreContextBeginBtn');
-            const moreContextNextBtn = document.getElementById('moreContextNextBtn');
+            const addBeforeBtn = document.getElementById('addBeforeBtn');
+            const removeBeforeBtn = document.getElementById('removeBeforeBtn');
+            const removeAfterBtn = document.getElementById('removeAfterBtn');
+            const addAfterBtn = document.getElementById('addAfterBtn');
             const notFunnyBtn = document.getElementById('notFunnyBtn');
             const notAppropriateBtn = document.getElementById('notAppropriateBtn');
 
@@ -394,16 +444,79 @@
                 });
             });
 
-            // Feedback button handlers
-            moreContextBeginBtn.addEventListener('click', () => handleFeedback('more-context-beginning'));
-            moreContextNextBtn.addEventListener('click', () => handleFeedback('more-context-next'));
+            // Context adjustment button handlers
+            addBeforeBtn.addEventListener('click', () => handleContextAdjust('add_before'));
+            addAfterBtn.addEventListener('click', () => handleContextAdjust('add_after'));
+            removeBeforeBtn.addEventListener('click', () => handleContextAdjust('remove_before'));
+            removeAfterBtn.addEventListener('click', () => handleContextAdjust('remove_after'));
+
+            // Other feedback button handlers
             notFunnyBtn.addEventListener('click', () => handleFeedback('not-funny'));
             notAppropriateBtn.addEventListener('click', () => handleFeedback('not-appropriate'));
+
+            function getCurrentPlaybackTime() {
+                if (currentVideoElement) {
+                    return currentVideoElement.currentTime || 0;
+                }
+                return 0;
+            }
+
+            function handleContextAdjust(action) {
+                if (!currentVideoId) return;
+
+                const currentTime = getCurrentPlaybackTime();
+                
+                disableAllButtons(true);
+                successMessage.style.display = 'none';
+
+                fetch('/feedback/adjust-context', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        video_id: currentVideoId,
+                        action: action,
+                        current_time: currentTime
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    disableAllButtons(false);
+
+                    if (data.success) {
+                        // Reload the video player with new highlight
+                        if (data.highlight_filename) {
+                            reloadVideoPlayer(data.highlight_filename, data.adjusted_time || 0);
+                        }
+                        
+                        // Update funny moment display
+                        if (data.new_clip) {
+                            document.getElementById('funnyMoment').textContent = 
+                                `${formatTime(data.new_clip.start)} - ${formatTime(data.new_clip.end)}`;
+                        }
+
+                        const messages = {
+                            'add_before': 'Added more earlier context!',
+                            'add_after': 'Extended with later content!',
+                            'remove_before': 'Removed earlier content!',
+                            'remove_after': 'Removed later content!'
+                        };
+                        showSuccess(messages[action] || 'Clip adjusted!');
+                    } else {
+                        showError(data.error || 'Context adjustment failed');
+                    }
+                })
+                .catch(err => {
+                    disableAllButtons(false);
+                    showError('Network error: ' + err.message);
+                });
+            }
 
             function handleFeedback(feedbackType) {
                 if (!currentVideoId) return;
 
-                disableFeedbackButtons(true);
+                disableAllButtons(true);
                 successMessage.style.display = 'none';
 
                 fetch(`/feedback/${feedbackType}`, {
@@ -415,7 +528,7 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    disableFeedbackButtons(false);
+                    disableAllButtons(false);
 
                     if (data.success) {
                         if (feedbackType === 'not-appropriate') {
@@ -423,7 +536,7 @@
                         } else {
                             // Reload the video player with new highlight
                             if (data.highlight_filename) {
-                                reloadVideoPlayer(data.highlight_filename);
+                                reloadVideoPlayer(data.highlight_filename, 0);
                             }
                             
                             // Update funny moment display
@@ -432,11 +545,7 @@
                                     `${formatTime(data.new_clip.start)} - ${formatTime(data.new_clip.end)}`;
                             }
 
-                            if (feedbackType === 'more-context-beginning') {
-                                showSuccess('Added more beginning context!');
-                            } else if (feedbackType === 'more-context-next') {
-                                showSuccess('Extended to next segment!');
-                            } else if (feedbackType === 'not-funny') {
+                            if (feedbackType === 'not-funny') {
                                 showSuccess('Found next funny moment!');
                             }
                         }
@@ -445,14 +554,16 @@
                     }
                 })
                 .catch(err => {
-                    disableFeedbackButtons(false);
+                    disableAllButtons(false);
                     showError('Network error: ' + err.message);
                 });
             }
 
-            function disableFeedbackButtons(disabled) {
-                moreContextBeginBtn.disabled = disabled;
-                moreContextNextBtn.disabled = disabled;
+            function disableAllButtons(disabled) {
+                addBeforeBtn.disabled = disabled;
+                addAfterBtn.disabled = disabled;
+                removeBeforeBtn.disabled = disabled;
+                removeAfterBtn.disabled = disabled;
                 notFunnyBtn.disabled = disabled;
                 notAppropriateBtn.disabled = disabled;
             }
@@ -465,16 +576,23 @@
                 }, 3000);
             }
 
-            function reloadVideoPlayer(filename) {
+            function reloadVideoPlayer(filename, startTime = 0) {
                 const videoPlayer = document.getElementById('videoPlayer');
-                // Add cache buster to force reload
                 const cacheBuster = new Date().getTime();
                 videoPlayer.innerHTML = `
-                    <video controls autoplay>
+                    <video id="mainVideo" controls autoplay>
                         <source src="/highlights/${filename}?t=${cacheBuster}" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
                 `;
+                
+                // Set the current video element reference and seek to the right time
+                currentVideoElement = document.getElementById('mainVideo');
+                if (currentVideoElement && startTime > 0) {
+                    currentVideoElement.addEventListener('loadedmetadata', function() {
+                        currentVideoElement.currentTime = startTime;
+                    });
+                }
             }
 
             function startTranscription(url) {
@@ -501,7 +619,7 @@
                         currentTranscript = data.transcript;
                         showVideoInfo(data.video_info);
                         showTranscript(data.transcript);
-                        feedbackButtons.style.display = 'grid';
+                        feedbackButtons.style.display = 'block';
                     } else {
                         showError(data.error || 'Unknown error occurred');
                     }
@@ -538,7 +656,7 @@
                 document.getElementById('contentColumns').style.display = 'grid';
                 
                 if (info.highlight_filename) {
-                    reloadVideoPlayer(info.highlight_filename);
+                    reloadVideoPlayer(info.highlight_filename, 0);
                 }
             }
 
@@ -592,3 +710,4 @@
     </script>
 </body>
 </html>
+            

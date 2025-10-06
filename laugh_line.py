@@ -10,18 +10,13 @@ Try with this John Mulaney video: https://www.youtube.com/watch?v=DtBkEJU1zr0
 Order of operations:
 1. Download video using yt-dlp
 2. Extract audio from video using ffmpeg
-3. Use local Whisper model for transcription
+3. Use local Whisper model for transcription with sentence-level segmentation
 4. Copy transcript generated from website to a new .txt file in a new directory, "transcripts"
     4a. Cache transcripts by video ID to avoid duplicates
 5. Pass transcript to Ollama to find the funniest joke, collect timestamps of start and end of joke
 6. Create a new trimmed .mp4 file with just the funniest joke using ffmpeg
     6a. Save trimmed video in a new directory, "highlights", named by video ID "video-id_highlight.mp4"
-7. User feedback system to refine highlights
-
-TODO:
-- Ensure basic error handling and edge cases for all cases
-- Adjust the transcription generation so that each sentence is its own segment with a start time
-    - This will help with the "more context next" feature, which will jump to the next sentence
+7. User feedback system to refine highlights with sentence-level precision
 """
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
@@ -92,10 +87,7 @@ def download_video(url):
     output_video = os.path.join(DOWNLOADS_DIR, f"{video_id}_video.mp4")
     output_audio = os.path.join(DOWNLOADS_DIR, f"{video_id}_audio.mp3")
 
-    # print("Video ID:", video_id)
-
     if os.path.exists(output_video):
-        # print("Using cached video:", output_video)
         if not os.path.exists(output_audio):
             extract_audio(output_video, output_audio)
         with yt_dlp.YoutubeDL({"quiet": True}) as ydl:
@@ -121,7 +113,6 @@ def download_video(url):
             }
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # print("Downloading video...")
             info = ydl.extract_info(url, download=True)
 
         extract_audio(output_video, output_audio)
@@ -148,26 +139,78 @@ def extract_audio(video_path, audio_path):
         "-acodec", "mp3",
         audio_path,
     ]
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, capture_output=True)
+
+def split_into_sentences(text):
+    """Split text into sentences using basic punctuation rules"""
+    # Simple sentence splitter - you could use a more sophisticated NLP library if needed
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    return [s for s in sentences if s]
 
 def generate_transcript_with_whisper(audio_path):
-    """Generate transcript from audio file using local Whisper model"""
+    """Generate transcript from audio file using local Whisper model with sentence-level precision"""
     if not os.path.exists(audio_path):
         raise Exception("Audio file not found: " + audio_path)
 
     try:
-        # print("Transcribing audio with local Whisper...")
-        result = whisper_model.transcribe(audio_path)
+        result = whisper_model.transcribe(audio_path, word_timestamps=True)
         
-        formatted_transcript = []
+        sentence_segments = []
+        
+        # Process each segment and split into sentences
         for segment in result["segments"]:
-            formatted_transcript.append({
-                'start_time': int(segment['start']),
-                'text': segment['text'].strip()
-            })
-
-        # print("Generated transcript with " + str(len(formatted_transcript)) + " segments")
-        return formatted_transcript
+            segment_text = segment['text'].strip()
+            sentences = split_into_sentences(segment_text)
+            
+            if not sentences:
+                continue
+            
+            # If we have word timestamps, use them for better precision
+            if 'words' in segment and segment['words']:
+                words = segment['words']
+                word_idx = 0
+                
+                for sentence in sentences:
+                    sentence_words = sentence.split()
+                    if not sentence_words:
+                        continue
+                    
+                    # Find the start time of first word in sentence
+                    start_time = segment['start']
+                    end_time = segment['end']
+                    
+                    # Try to match words to get precise timing
+                    for i, word_info in enumerate(words[word_idx:], start=word_idx):
+                        if sentence_words[0].lower() in word_info.get('word', '').lower():
+                            start_time = word_info.get('start', segment['start'])
+                            # Find end of sentence
+                            words_to_check = min(len(sentence_words), len(words) - i)
+                            if i + words_to_check <= len(words):
+                                end_time = words[i + words_to_check - 1].get('end', segment['end'])
+                            word_idx = i + words_to_check
+                            break
+                    
+                    sentence_segments.append({
+                        'start_time': int(start_time),
+                        'end_time': int(end_time),
+                        'text': sentence
+                    })
+            else:
+                # Fallback: distribute time evenly across sentences
+                segment_duration = segment['end'] - segment['start']
+                time_per_sentence = segment_duration / len(sentences)
+                
+                for i, sentence in enumerate(sentences):
+                    start_time = segment['start'] + (i * time_per_sentence)
+                    end_time = start_time + time_per_sentence
+                    
+                    sentence_segments.append({
+                        'start_time': int(start_time),
+                        'end_time': int(end_time),
+                        'text': sentence
+                    })
+        
+        return sentence_segments
         
     except Exception as e:
         print("Error generating transcript: " + str(e))
@@ -176,7 +219,6 @@ def generate_transcript_with_whisper(audio_path):
 def call_ollama(prompt, model=OLLAMA_MODEL):
     """Call Ollama API to analyze newly generated transcript"""
     try:
-        # print(f"Calling Ollama with model: {model}")
         response = requests.post(
             f"{OLLAMA_BASE_URL}/api/generate",
             json={
@@ -194,7 +236,6 @@ def call_ollama(prompt, model=OLLAMA_MODEL):
         if response.status_code == 200:
             return response.json()["response"]
         else:
-            # print(f"Ollama API error: {response.status_code} - {response.text}")
             return None
 
     except requests.exceptions.ConnectionError:
@@ -269,8 +310,6 @@ def analyze_transcript_with_ollama(transcript_text, exclude_sections=None):
 
 def create_transcript(audio_path):
     """Create transcript from audio file using local Whisper"""
-    # print("create_transcript() called with:", audio_path)
-
     try:
         transcript = generate_transcript_with_whisper(audio_path)
         return {"transcript": transcript}
@@ -278,10 +317,10 @@ def create_transcript(audio_path):
     except Exception as e:
         print("Transcript generation failed: " + str(e))
         placeholder_transcript = [
-            {'start_time': 0, 'text': 'Audio download successful!'},
-            {'start_time': 5, 'text': 'Local Whisper transcription failed.'},
-            {'start_time': 10, 'text': 'Check the downloads directory.'},
-            {'start_time': 15, 'text': 'Error: ' + str(e)}
+            {'start_time': 0, 'end_time': 5, 'text': 'Audio download successful!'},
+            {'start_time': 5, 'end_time': 10, 'text': 'Local Whisper transcription failed.'},
+            {'start_time': 10, 'end_time': 15, 'text': 'Check the downloads directory.'},
+            {'start_time': 15, 'end_time': 20, 'text': 'Error: ' + str(e)}
         ]
         return {"transcript": placeholder_transcript}
 
@@ -302,7 +341,6 @@ def create_transcript_txt(transcript):
             seconds = segment['start_time'] % 60
             f.write(f"[{minutes:02}:{seconds:02}] {segment['text']}\n")
     
-    # print(f"Transcript saved to {txt_path}")
     return txt_path
 
 def create_highlight_video(video_path, start_time, end_time, video_id, suffix="highlight"):
@@ -321,16 +359,58 @@ def create_highlight_video(video_path, start_time, end_time, video_id, suffix="h
         "-c", "copy",
         highlight_path,
     ]
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, capture_output=True)
 
-    # print(f"Highlight video saved to {highlight_path}")
     return highlight_path
 
-def find_next_transcript_segment(transcript, current_end_time):
-    """Find the next sentence/segment in the transcript after current_end_time"""
-    for segment in transcript:
-        if segment['start_time'] > current_end_time:
-            return segment['start_time']
+def find_sentences_to_add(transcript, current_start, current_end, direction, count=1):
+    """Find N sentences before (direction='before') or after (direction='after') current clip
+    Returns tuple of (new_start, new_end) or None if not possible"""
+    
+    if direction == 'before':
+        # Find sentences that end at or before current_start
+        candidates = [s for s in transcript if s['end_time'] <= current_start]
+        if not candidates:
+            return None
+        
+        # Get the last N sentences before current clip
+        sentences_to_add = candidates[-count:] if len(candidates) >= count else candidates
+        new_start = sentences_to_add[0]['start_time']
+        return (new_start, current_end)
+    
+    elif direction == 'after':
+        # Find sentences that start at or after current_end
+        candidates = [s for s in transcript if s['start_time'] >= current_end]
+        if not candidates:
+            return None
+        
+        # Get the first N sentences after current clip
+        sentences_to_add = candidates[:count] if len(candidates) >= count else candidates
+        new_end = sentences_to_add[-1]['end_time']
+        return (current_start, new_end)
+    
+    return None
+
+def find_sentences_to_remove(transcript, current_start, current_end, direction, count=1):
+    """Remove N sentences from beginning (direction='before') or end (direction='after') of clip
+    Returns tuple of (new_start, new_end) or None if not possible"""
+    
+    # Get all sentences in current clip
+    clip_sentences = [s for s in transcript if s['start_time'] >= current_start and s['end_time'] <= current_end]
+    
+    if len(clip_sentences) <= count:
+        return None  # Can't remove more sentences than we have
+    
+    if direction == 'before':
+        # Remove N sentences from beginning
+        new_start = clip_sentences[count]['start_time']
+        return (new_start, current_end)
+    
+    elif direction == 'after':
+        # Remove N sentences from end
+        new_end = clip_sentences[-(count+1)]['end_time']
+        return (current_start, new_end)
+    
     return None
 
 @app.route('/')
@@ -369,7 +449,7 @@ def transcribe():
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 
-        print("*** Step 2: EXTRACT AUDIO")
+        print("*** Step 2: GENERATE SENTENCE-LEVEL TRANSCRIPT")
         try:
             audio_path = video_result['audio_path']
             result = create_transcript(audio_path)
@@ -383,7 +463,6 @@ def transcribe():
                 'url': url,
                 'transcript': transcript
             })
-            # print("Transcript saved at:", transcript_txt_path)
         except Exception as e:
             return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
@@ -395,7 +474,6 @@ def transcribe():
                 transcript_text, 
                 exclude_sections=feedback_data.get('flagged_sections', [])
             )
-            # print("Ollama analysis:", analysis)
             
             if not analysis or len(analysis) == 0:
                 return jsonify({'error': 'No funny moments found in transcript'}), 400
@@ -412,7 +490,6 @@ def transcribe():
                 funny_moment['end_time'],
                 video_info['video_id']
             )
-            # print("Highlight video created at:", highlight_path)
             video_info['highlight_filename'] = f"{video_info['video_id']}_highlight.mp4"
             video_info['funny_moment'] = funny_moment
             
@@ -439,60 +516,14 @@ def transcribe():
     except Exception as e:
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
-@app.route('/feedback/more-context-beginning', methods=['POST'])
-def feedback_more_context_beginning():
-    """Extend the clip by adding 10 seconds at the beginning"""
+@app.route('/feedback/adjust-context', methods=['POST'])
+def feedback_adjust_context():
+    """Adjust clip by adding or removing sentences from beginning or end"""
     try:
         data = request.json
         video_id = data.get('video_id')
-        
-        if not video_id or video_id not in current_sessions:
-            return jsonify({'error': 'No active session for this video'}), 400
-        
-        session = current_sessions[video_id]
-        current_clip = session['current_clip']
-        
-        # Extend beginning by 10 seconds (but not below 0)
-        new_start = max(0, current_clip['start'] - 10)
-        new_end = current_clip['end']
-        
-        # Create new highlight
-        highlight_path = create_highlight_video(
-            session['video_path'],
-            new_start,
-            new_end,
-            video_id,
-            suffix="highlight"
-        )
-        
-        # Update session
-        session['current_clip'] = {'start': new_start, 'end': new_end}
-        
-        # Save feedback
-        feedback_data = load_feedback(video_id)
-        feedback_data['feedback_history'].append({
-            'timestamp': datetime.now().isoformat(),
-            'type': 'more_context_beginning',
-            'original_clip': current_clip,
-            'new_clip': {'start': new_start, 'end': new_end}
-        })
-        save_feedback(video_id, feedback_data)
-        
-        return jsonify({
-            'success': True,
-            'new_clip': {'start': new_start, 'end': new_end},
-            'highlight_filename': f"{video_id}_highlight.mp4"
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/feedback/more-context-next', methods=['POST'])
-def feedback_more_context_next():
-    """Jump to the next sentence in the transcript"""
-    try:
-        data = request.json
-        video_id = data.get('video_id')
+        action = data.get('action')  # 'add_before', 'add_after', 'remove_before', 'remove_after'
+        current_time = data.get('current_time', 0)  # Current playback position
         
         if not video_id or video_id not in current_sessions:
             return jsonify({'error': 'No active session for this video'}), 400
@@ -501,15 +532,24 @@ def feedback_more_context_next():
         current_clip = session['current_clip']
         transcript = session['transcript']
         
-        # Find next segment
-        next_start = find_next_transcript_segment(transcript, current_clip['end'])
+        # Determine new clip boundaries based on action
+        new_bounds = None
         
-        if next_start is None:
-            return jsonify({'error': 'No more content after current clip'}), 400
+        if action == 'add_before':
+            new_bounds = find_sentences_to_add(transcript, current_clip['start'], current_clip['end'], 'before', count=2)
+        elif action == 'add_after':
+            new_bounds = find_sentences_to_add(transcript, current_clip['start'], current_clip['end'], 'after', count=2)
+        elif action == 'remove_before':
+            new_bounds = find_sentences_to_remove(transcript, current_clip['start'], current_clip['end'], 'before', count=2)
+        elif action == 'remove_after':
+            new_bounds = find_sentences_to_remove(transcript, current_clip['start'], current_clip['end'], 'after', count=2)
+        else:
+            return jsonify({'error': 'Invalid action'}), 400
         
-        # Extend to include next segment (add ~15 seconds for context)
-        new_start = current_clip['start']
-        new_end = next_start + 15
+        if not new_bounds:
+            return jsonify({'error': 'Cannot perform this action (no more content or clip too short)'}), 400
+        
+        new_start, new_end = new_bounds
         
         # Create new highlight
         highlight_path = create_highlight_video(
@@ -520,6 +560,14 @@ def feedback_more_context_next():
             suffix="highlight"
         )
         
+        # Calculate adjusted playback time to maintain relative position
+        # If we added to beginning, offset the time; otherwise keep it the same
+        time_offset = 0
+        if action == 'add_before':
+            time_offset = current_clip['start'] - new_start
+        
+        adjusted_time = current_time + time_offset
+        
         # Update session
         session['current_clip'] = {'start': new_start, 'end': new_end}
         
@@ -527,7 +575,7 @@ def feedback_more_context_next():
         feedback_data = load_feedback(video_id)
         feedback_data['feedback_history'].append({
             'timestamp': datetime.now().isoformat(),
-            'type': 'more_context_next',
+            'type': f'context_adjust_{action}',
             'original_clip': current_clip,
             'new_clip': {'start': new_start, 'end': new_end}
         })
@@ -536,7 +584,8 @@ def feedback_more_context_next():
         return jsonify({
             'success': True,
             'new_clip': {'start': new_start, 'end': new_end},
-            'highlight_filename': f"{video_id}_highlight.mp4"
+            'highlight_filename': f"{video_id}_highlight.mp4",
+            'adjusted_time': adjusted_time
         })
         
     except Exception as e:
