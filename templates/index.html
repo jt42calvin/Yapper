@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Video Transcriber</title>
+    <title>Laugh Line</title>
     <style>
         * {
             margin: 0;
@@ -19,12 +19,12 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            padding: 40px;
+            padding: 30px;
             backdrop-filter: blur(10px);
         }
 
@@ -36,14 +36,12 @@
             font-weight: 300;
         }
 
-        .input-section {
-            margin-bottom: 30px;
-        }
-
-        .url-input-container {
+        .url-section {
+            max-width: 800px;
+            margin: 0 auto 30px;
             display: flex;
             gap: 15px;
-            margin-bottom: 20px;
+            align-items: center;
         }
 
         #urlInput {
@@ -88,7 +86,184 @@
             color: #666;
             font-size: 14px;
             text-align: center;
+            margin: 0 auto 20px;
+            max-width: 800px;
+        }
+
+        .content-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            display: none;
+        }
+
+        .video-column {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .video-player {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .video-player video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .feedback-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
             margin-bottom: 20px;
+        }
+
+        .context-controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .feedback-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .context-btn {
+            padding: 10px 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .feedback-btn:hover, .context-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .feedback-btn:disabled, .context-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-green {
+            background: #60ec81;
+            color: white;
+        }
+
+        .btn-yellow {
+            background: #f1c645;
+            color: #333;
+        }
+
+        .btn-red {
+            background: #e06370;
+            color: white;
+        }
+
+        .btn-light-green {
+            background: #90ee90;
+            color: #333;
+        }
+
+        .btn-light-red {
+            background: #ffb3ba;
+            color: #333;
+        }
+
+        .video-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: block;
+        }
+
+        .video-info h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .video-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .transcript-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .transcript-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .copy-btn {
+            padding: 8px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .transcript-content {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            height: 500px;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .transcript-entry {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-left: 4px solid #667eea;
+            background: #f8f9fa;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .timestamp {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .transcript-text {
+            color: #333;
+            line-height: 1.5;
         }
 
         .loading {
@@ -125,82 +300,15 @@
             display: none;
         }
 
-        .video-info {
-            background: #f0f8ff;
-            border: 1px solid #b3d9ff;
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
             border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-            display: none;
-        }
-
-        .video-info h3 {
-            color: #1565c0;
-            margin-bottom: 10px;
-        }
-
-        .video-info p {
-            margin: 5px 0;
-            color: #333;
-        }
-
-        .transcript-section {
-            margin-top: 30px;
-            display: none;
-        }
-
-        .transcript-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .transcript-header h2 {
-            color: #333;
-        }
-
-        .copy-btn {
-            padding: 8px 16px;
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .copy-btn:hover {
-            background: #218838;
-        }
-
-        .transcript-content {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            max-height: 500px;
-            overflow-y: auto;
-            border: 1px solid #dee2e6;
-        }
-
-        .transcript-entry {
-            margin-bottom: 15px;
             padding: 10px;
-            background: white;
-            border-radius: 5px;
-            border-left: 4px solid #667eea;
-        }
-
-        .timestamp {
-            font-weight: 600;
-            color: #667eea;
-            font-size: 14px;
-            margin-bottom: 5px;
-        }
-
-        .transcript-text {
-            color: #333;
-            line-height: 1.6;
+            color: #155724;
+            margin: 10px 0;
+            display: none;
+            text-align: center;
         }
 
         .no-transcript {
@@ -213,17 +321,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>YouTube Video Transcriber</h1>
+        <h1>Laugh Line - Comedy Clip Finder</h1>
         
-        <div class="input-section">
-            <div class="url-input-container">
-                <input type="text" id="urlInput" placeholder="Enter YouTube video URL..." 
-                       value="">
-                <button id="transcribeBtn">Transcribe</button>
-            </div>
-            <div class="info-text">
-                Enter a YouTube video URL to generate a transcript with timestamps (max 10 minutes)
-            </div>
+        <div class="url-section">
+            <input type="text" id="urlInput" placeholder="Paste YouTube URL here...">
+            <button id="transcribeBtn">Generate Funny Clip!</button>
+        </div>
+        <div class="info-text">
+            Enter a YouTube video URL to find the funniest moment
         </div>
 
         <div class="loading" id="loading">
@@ -232,20 +337,59 @@
 
         <div class="error" id="error"></div>
 
-        <div class="video-info" id="videoInfo">
-            <h3>Video Information</h3>
-            <p><strong>Title:</strong> <span id="videoTitle"></span></p>
-            <p><strong>Uploader:</strong> <span id="videoUploader"></span></p>
-            <p><strong>Duration:</strong> <span id="videoDuration"></span></p>
-        </div>
+        <div class="content-columns" id="contentColumns">
+            <div class="video-column">
+                <div class="video-player" id="videoPlayer"></div>
 
-        <div class="transcript-section" id="transcriptSection">
-            <div class="transcript-header">
-                <h2>Transcript</h2>
-                <button class="copy-btn" id="copyBtn">Copy Transcript</button>
+                <div id="feedbackButtons" style="display: none;">
+                    <div class="context-controls">
+                        <button class="context-btn btn-light-green" id="addBeforeBtn">
+                            <span>➕ ⬅️</span>
+                            <span style="font-size: 10px;">Add Earlier</span>
+                        </button>
+                        <button class="context-btn btn-light-red" id="removeBeforeBtn">
+                            <span>➖ ⬅️</span>
+                            <span style="font-size: 10px;">Cut Earlier</span>
+                        </button>
+                        <button class="context-btn btn-light-red" id="removeAfterBtn">
+                            <span>➖ ➡️</span>
+                            <span style="font-size: 10px;">Cut Later</span>
+                        </button>
+                        <button class="context-btn btn-light-green" id="addAfterBtn">
+                            <span>➕ ➡️</span>
+                            <span style="font-size: 10px;">Add Later</span>
+                        </button>
+                    </div>
+
+                    <div class="feedback-buttons">
+                        <button class="feedback-btn btn-yellow" id="notFunnyBtn">
+                            😐 Find a different joke
+                        </button>
+                        <button class="feedback-btn btn-red" id="notAppropriateBtn">
+                            🚫 Not appropriate
+                        </button>
+                    </div>
+                </div>
+
+                <div class="success-message" id="successMessage"></div>
+
+                <div class="video-info" id="videoInfo">
+                    <h3>Video Information</h3>
+                    <p><strong>Title:</strong> <span id="videoTitle"></span></p>
+                    <p><strong>Channel:</strong> <span id="videoUploader"></span></p>
+                    <p><strong>Duration:</strong> <span id="videoDuration"></span></p>
+                    <p><strong>Funniest Moment:</strong> <span id="funnyMoment"></span></p>
+                </div>
             </div>
-            <div class="transcript-content" id="transcriptContent">
-                <div class="no-transcript">No transcript available</div>
+
+            <div class="transcript-section" id="transcriptSection">
+                <div class="transcript-header">
+                    <h2>Transcript</h2>
+                    <button class="copy-btn" id="copyBtn">Copy Transcript</button>
+                </div>
+                <div class="transcript-content" id="transcriptContent">
+                    <div class="no-transcript">No transcript available</div>
+                </div>
             </div>
         </div>
     </div>
@@ -260,6 +404,19 @@
             const transcriptSection = document.getElementById('transcriptSection');
             const transcriptContent = document.getElementById('transcriptContent');
             const copyBtn = document.getElementById('copyBtn');
+            const feedbackButtons = document.getElementById('feedbackButtons');
+            const successMessage = document.getElementById('successMessage');
+
+            let currentVideoId = null;
+            let currentTranscript = null;
+            let currentVideoElement = null;
+
+            const addBeforeBtn = document.getElementById('addBeforeBtn');
+            const removeBeforeBtn = document.getElementById('removeBeforeBtn');
+            const removeAfterBtn = document.getElementById('removeAfterBtn');
+            const addAfterBtn = document.getElementById('addAfterBtn');
+            const notFunnyBtn = document.getElementById('notFunnyBtn');
+            const notAppropriateBtn = document.getElementById('notAppropriateBtn');
 
             transcribeBtn.addEventListener('click', function() {
                 const url = urlInput.value.trim();
@@ -287,8 +444,158 @@
                 });
             });
 
+            // Context adjustment button handlers
+            addBeforeBtn.addEventListener('click', () => handleContextAdjust('add_before'));
+            addAfterBtn.addEventListener('click', () => handleContextAdjust('add_after'));
+            removeBeforeBtn.addEventListener('click', () => handleContextAdjust('remove_before'));
+            removeAfterBtn.addEventListener('click', () => handleContextAdjust('remove_after'));
+
+            // Other feedback button handlers
+            notFunnyBtn.addEventListener('click', () => handleFeedback('not-funny'));
+            notAppropriateBtn.addEventListener('click', () => handleFeedback('not-appropriate'));
+
+            function getCurrentPlaybackTime() {
+                if (currentVideoElement) {
+                    return currentVideoElement.currentTime || 0;
+                }
+                return 0;
+            }
+
+            function handleContextAdjust(action) {
+                if (!currentVideoId) return;
+
+                const currentTime = getCurrentPlaybackTime();
+                
+                disableAllButtons(true);
+                successMessage.style.display = 'none';
+
+                fetch('/feedback/adjust-context', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        video_id: currentVideoId,
+                        action: action,
+                        current_time: currentTime
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    disableAllButtons(false);
+
+                    if (data.success) {
+                        // Reload the video player with new highlight
+                        if (data.highlight_filename) {
+                            reloadVideoPlayer(data.highlight_filename, data.adjusted_time || 0);
+                        }
+                        
+                        // Update funny moment display
+                        if (data.new_clip) {
+                            document.getElementById('funnyMoment').textContent = 
+                                `${formatTime(data.new_clip.start)} - ${formatTime(data.new_clip.end)}`;
+                        }
+
+                        const messages = {
+                            'add_before': 'Added more earlier context!',
+                            'add_after': 'Extended with later content!',
+                            'remove_before': 'Removed earlier content!',
+                            'remove_after': 'Removed later content!'
+                        };
+                        showSuccess(messages[action] || 'Clip adjusted!');
+                    } else {
+                        showError(data.error || 'Context adjustment failed');
+                    }
+                })
+                .catch(err => {
+                    disableAllButtons(false);
+                    showError('Network error: ' + err.message);
+                });
+            }
+
+            function handleFeedback(feedbackType) {
+                if (!currentVideoId) return;
+
+                disableAllButtons(true);
+                successMessage.style.display = 'none';
+
+                fetch(`/feedback/${feedbackType}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ video_id: currentVideoId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    disableAllButtons(false);
+
+                    if (data.success) {
+                        if (feedbackType === 'not-appropriate') {
+                            showSuccess('Section flagged as inappropriate');
+                        } else {
+                            // Reload the video player with new highlight
+                            if (data.highlight_filename) {
+                                reloadVideoPlayer(data.highlight_filename, 0);
+                            }
+                            
+                            // Update funny moment display
+                            if (data.new_clip) {
+                                document.getElementById('funnyMoment').textContent = 
+                                    `${formatTime(data.new_clip.start)} - ${formatTime(data.new_clip.end)}`;
+                            }
+
+                            if (feedbackType === 'not-funny') {
+                                showSuccess('Found next funny moment!');
+                            }
+                        }
+                    } else {
+                        showError(data.error || 'Feedback action failed');
+                    }
+                })
+                .catch(err => {
+                    disableAllButtons(false);
+                    showError('Network error: ' + err.message);
+                });
+            }
+
+            function disableAllButtons(disabled) {
+                addBeforeBtn.disabled = disabled;
+                addAfterBtn.disabled = disabled;
+                removeBeforeBtn.disabled = disabled;
+                removeAfterBtn.disabled = disabled;
+                notFunnyBtn.disabled = disabled;
+                notAppropriateBtn.disabled = disabled;
+            }
+
+            function showSuccess(message) {
+                successMessage.textContent = message;
+                successMessage.style.display = 'block';
+                setTimeout(() => {
+                    successMessage.style.display = 'none';
+                }, 3000);
+            }
+
+            function reloadVideoPlayer(filename, startTime = 0) {
+                const videoPlayer = document.getElementById('videoPlayer');
+                const cacheBuster = new Date().getTime();
+                videoPlayer.innerHTML = `
+                    <video id="mainVideo" controls autoplay>
+                        <source src="/highlights/${filename}?t=${cacheBuster}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                `;
+                
+                // Set the current video element reference and seek to the right time
+                currentVideoElement = document.getElementById('mainVideo');
+                if (currentVideoElement && startTime > 0) {
+                    currentVideoElement.addEventListener('loadedmetadata', function() {
+                        currentVideoElement.currentTime = startTime;
+                    });
+                }
+            }
+
             function startTranscription(url) {
-                // Reset UI
                 hideAll();
                 loading.style.display = 'block';
                 transcribeBtn.disabled = true;
@@ -305,11 +612,14 @@
                 .then(data => {
                     loading.style.display = 'none';
                     transcribeBtn.disabled = false;
-                    transcribeBtn.textContent = 'Transcribe';
+                    transcribeBtn.textContent = 'Generate Funny Clip!';
 
                     if (data.success) {
+                        currentVideoId = data.video_info.video_id;
+                        currentTranscript = data.transcript;
                         showVideoInfo(data.video_info);
                         showTranscript(data.transcript);
+                        feedbackButtons.style.display = 'block';
                     } else {
                         showError(data.error || 'Unknown error occurred');
                     }
@@ -317,7 +627,7 @@
                 .catch(err => {
                     loading.style.display = 'none';
                     transcribeBtn.disabled = false;
-                    transcribeBtn.textContent = 'Transcribe';
+                    transcribeBtn.textContent = 'Generate Funny Clip!';
                     showError('Network error: ' + err.message);
                 });
             }
@@ -326,6 +636,8 @@
                 error.style.display = 'none';
                 videoInfo.style.display = 'none';
                 transcriptSection.style.display = 'none';
+                feedbackButtons.style.display = 'none';
+                successMessage.style.display = 'none';
             }
 
             function showError(message) {
@@ -337,7 +649,15 @@
                 document.getElementById('videoTitle').textContent = info.title;
                 document.getElementById('videoUploader').textContent = info.uploader;
                 document.getElementById('videoDuration').textContent = formatDuration(info.duration);
-                videoInfo.style.display = 'block';
+                if (info.funny_moment) {
+                    document.getElementById('funnyMoment').textContent = 
+                        `${formatTime(info.funny_moment.start_time)} - ${formatTime(info.funny_moment.end_time)}`;
+                }
+                document.getElementById('contentColumns').style.display = 'grid';
+                
+                if (info.highlight_filename) {
+                    reloadVideoPlayer(info.highlight_filename, 0);
+                }
             }
 
             function showTranscript(transcript) {
@@ -390,3 +710,4 @@
     </script>
 </body>
 </html>
+            
