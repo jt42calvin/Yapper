@@ -1,0 +1,12 @@
+flask==2.3.3
+yt-dlp==2025.9.26
+python-dotenv==1.1.1
+openai-whisper==20250625
+requests==2.31.0
+# Whisper requires torch; install the appropriate torch build for your platform
+torch==2.8.0
+# torchaudio is not installed in this environment. If you need it, install a matching version for your torch build
+# Example (may need platform-specific wheel):
+# pip install torchaudio==2.8.0
+# Optional (production):
+# gunicorn==20.1.0
